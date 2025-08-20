@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Listed Properties</title>
+    <link rel="stylesheet" href="./css/seller_list.css">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="./js/firebase.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h2>📜 My Listed Properties</h2>
+        <div id="propertyList" class="property-container">
+            <!-- Property listings will be loaded here -->
+        </div>
+        <a href="dashboard.html" class="back-button">🔙 Back to Dashboard</a>
+    </div>
+
+    <script src="./js/seller_list.js"></script>
+</body>
+</html>

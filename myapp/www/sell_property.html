@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell Property</title>
+    <link rel="stylesheet" href="css/sell_property.css">
+    
+    <!-- ✅ Firebase v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+    <script src="js/firebase.js"></script> <!-- ✅ Firebase Configuration -->
+</head>
+<body>
+    <div class="container">
+        <h2>Sell Your Property</h2>
+
+        <form id="propertyForm">
+            <label for="propertyType">Property Type:</label>
+            <select id="propertyType" required>
+                <option value="Bungalow">Bungalow</option>
+                <option value="Shop">Shop</option>
+                <option value="Land">Land</option>
+                <option value="Flat">Flat</option>
+            </select>
+
+            <label for="price">Price:</label>
+            <input type="number" id="price" placeholder="Enter price" required>
+
+            <label for="description">Property Description:</label>
+            <textarea id="description" placeholder="Enter property details" required></textarea>
+
+            <label for="country">Country:</label>
+            <select id="country">
+                <option value="US">United States</option>
+                <option value="UK">United Kingdom</option>
+                <option value="India">India</option>
+                <option value="Canada">Canada</option>
+                <option value="Germany">Germany</option>
+            </select>
+
+            <label for="state">State:</label>
+            <select id="state"></select>
+
+            <label for="propertyImages">Upload Property Images (Multiple Allowed):</label>
+            <input type="file" id="propertyImages" accept="image/*" multiple required>
+
+            <div id="imagePreview"></div> <!-- ✅ Improved Image Preview Section -->
+
+            <button type="submit">Post Property</button>
+        </form>
+
+        <p id="statusMessage"></p>
+    </div>
+
+    <script src="js/sell_property.js"></script> <!-- ✅ Property Upload Script -->
+</body>
+</html>
