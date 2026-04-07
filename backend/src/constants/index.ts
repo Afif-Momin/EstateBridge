@@ -1,0 +1,130 @@
+// HTTP Status Codes
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
+} as const;
+
+// Error Codes
+export const ERROR_CODES = {
+  // Authentication
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+
+  // Authorization
+  FORBIDDEN: 'FORBIDDEN',
+  INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
+
+  // Validation
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_INPUT: 'INVALID_INPUT',
+  MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
+
+  // Resources
+  NOT_FOUND: 'NOT_FOUND',
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  PROPERTY_NOT_FOUND: 'PROPERTY_NOT_FOUND',
+
+  // Conflicts
+  DUPLICATE_ENTRY: 'DUPLICATE_ENTRY',
+  EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
+  FEEDBACK_ALREADY_SUBMITTED: 'FEEDBACK_ALREADY_SUBMITTED',
+
+  // Server
+  INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+  STORAGE_ERROR: 'STORAGE_ERROR',
+
+  // Services
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  AI_SERVICE_ERROR: 'AI_SERVICE_ERROR',
+
+  // Rate Limiting
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+} as const;
+
+// User Roles
+export const USER_ROLES = {
+  BUYER: 'buyer',
+  SELLER: 'seller',
+} as const;
+
+// Property Status
+export const PROPERTY_STATUS = {
+  AVAILABLE: 'available',
+  UNDER_OFFER: 'under_offer',
+  SOLD: 'sold',
+} as const;
+
+// Property Types
+export const PROPERTY_TYPES = {
+  HOUSE: 'house',
+  APARTMENT: 'apartment',
+  CONDO: 'condo',
+  LAND: 'land',
+  COMMERCIAL: 'commercial',
+} as const;
+
+// Appointment Status
+export const APPOINTMENT_STATUS = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  DECLINED: 'declined',
+  CANCELLED: 'cancelled',
+} as const;
+
+// Image Upload
+export const IMAGE_UPLOAD = {
+  MAX_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_COUNT: 10,
+  ALLOWED_FORMATS: ['image/jpeg', 'image/png', 'image/webp'],
+  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.webp'],
+} as const;
+
+// Validation Constraints
+export const VALIDATION = {
+  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_MAX_LENGTH: 50,
+  FULL_NAME_MIN_LENGTH: 2,
+  FULL_NAME_MAX_LENGTH: 100,
+  PROPERTY_TITLE_MIN_LENGTH: 5,
+  PROPERTY_TITLE_MAX_LENGTH: 200,
+  PROPERTY_DESCRIPTION_MIN_LENGTH: 20,
+  PROPERTY_DESCRIPTION_MAX_LENGTH: 2000,
+  PROPERTY_ADDRESS_MIN_LENGTH: 10,
+  PROPERTY_ADDRESS_MAX_LENGTH: 500,
+  FEEDBACK_COMMENT_MIN_LENGTH: 10,
+  FEEDBACK_COMMENT_MAX_LENGTH: 500,
+  RATING_MIN: 1,
+  RATING_MAX: 5,
+} as const;
+
+// Firestore Collections
+export const COLLECTIONS = {
+  USERS: 'users',
+  PROPERTIES: 'properties',
+  APPOINTMENTS: 'appointments',
+  FEEDBACK: 'feedback',
+  REGIONS: 'regions',
+  CONVERSATIONS: 'conversations',
+  VERIFICATION_TOKENS: 'verification_tokens',
+  RATE_LIMITS: 'rate_limits',
+} as const;
+
+// Pagination
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 20,
+  MAX_LIMIT: 100,
+} as const;

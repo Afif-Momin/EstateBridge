@@ -1,0 +1,85 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isSeller() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'seller';
+    }
+    
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    
+    function isValidImageSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB max as per requirement 13.4
+    }
+    
+    function isValidPDFFile() {
+      return request.resource.contentType == 'application/pdf';
+    }
+    
+    function isValidPDFSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB max for PDFs
+    }
+    
+    // Property images folder structure: properties/{propertyId}/{imageId}
+    match /properties/{propertyId}/{imageId} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow upload only for sellers with valid image files
+      allow create: if isSeller() && 
+                       isValidImageFile() && 
+                       isValidImageSize();
+      
+      // Allow delete only for the property owner (seller)
+      allow delete: if isSeller() && 
+                       firestore.get(/databases/(default)/documents/properties/$(propertyId)).data.sellerId == request.auth.uid;
+      
+      // Prevent updates (delete and recreate instead)
+      allow update: if false;
+    }
+    
+    // Brochure folder structure: brochures/{propertyId}/{timestamp}.pdf
+    match /brochures/{propertyId}/{fileName} {
+      // Allow read only for authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow create only for authenticated users with valid PDF files
+      // Backend service will handle the actual creation
+      allow create: if isAuthenticated() && 
+                       isValidPDFFile() && 
+                       isValidPDFSize();
+      
+      // Prevent updates and deletes (brochures are immutable, cleanup handled by backend)
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // User profile images folder structure: users/{userId}/profile
+    match /users/{userId}/profile {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow upload/update only for the user themselves
+      allow create, update: if isAuthenticated() && 
+                               request.auth.uid == userId &&
+                               isValidImageFile() && 
+                               isValidImageSize();
+      
+      // Allow delete only for the user themselves
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
