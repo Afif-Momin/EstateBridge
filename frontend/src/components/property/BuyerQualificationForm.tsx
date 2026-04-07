@@ -19,12 +19,12 @@ interface Props {
 
 const schema = z.object({
   reason_to_buy: z.enum(['Investment', 'Self Use'], {
-    required_error: 'Please select a reason to buy',
+    error: 'Please select a reason to buy',
   }),
   is_property_dealer: z.boolean(),
   buyer_name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
   buyer_phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number is too long'),
-  purchase_timeline: z.enum(['3 months', '6 months', 'More than 6 months']).or(z.literal('')).optional(),
+  purchase_timeline: z.enum(['3 months', '6 months', 'More than 6 months']).optional(),
   home_loan_interest: z.boolean().optional(),
   site_visit_interest: z.boolean().optional(),
   terms_accepted: z.boolean().refine((val) => val === true, {
@@ -54,7 +54,7 @@ const BuyerQualificationForm: React.FC<Props> = ({ listingId, sellerId, onSucces
   const dispatch = useAppDispatch();
   const [sellerContact, setSellerContact] = useState<AppointmentResponse['sellerContact'] | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       is_property_dealer: false,
@@ -75,14 +75,14 @@ const BuyerQualificationForm: React.FC<Props> = ({ listingId, sellerId, onSucces
         is_property_dealer: data.is_property_dealer,
         buyer_name: data.buyer_name,
         buyer_phone: data.buyer_phone,
-        purchase_timeline: data.purchase_timeline && data.purchase_timeline !== '' ? data.purchase_timeline : undefined,
+        purchase_timeline: data.purchase_timeline ?? undefined,
         home_loan_interest: data.home_loan_interest,
         site_visit_interest: data.site_visit_interest,
         terms_accepted: data.terms_accepted,
         privacy_policy_accepted: data.privacy_policy_accepted,
       }),
     onSuccess: (response) => {
-      const { appointment, sellerContact: contact } = response.data.data;
+      const { sellerContact: contact } = response.data.data;
       setSellerContact(contact);
       dispatch(addToast({ type: 'success', message: 'Appointment requested successfully!' }));
       onSuccess?.();
