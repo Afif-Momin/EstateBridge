@@ -20,6 +20,7 @@ export const config = {
   ai: {
     apiKey: process.env.AI_API_KEY || '',
     apiUrl: process.env.AI_API_URL || 'https://api.openai.com/v1',
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
   },
 
   // Security

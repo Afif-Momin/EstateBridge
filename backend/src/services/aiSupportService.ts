@@ -1,12 +1,25 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config';
 import { getFirebaseFirestore } from '../config/firebase';
 import { COLLECTIONS } from '../constants';
 import { ChatMessage, AIResponse } from '../types';
 import { logger } from '../utils/logger';
 
-// Circuit breaker states
-type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+// ─── Gemini setup ────────────────────────────────────────────────────────────
+let genAI: GoogleGenerativeAI | null = null;
 
+function getGeminiClient(): GoogleGenerativeAI {
+  if (!genAI) {
+    if (!config.ai.geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
+    genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
+  }
+  return genAI;
+}
+
+// ─── Circuit breaker ─────────────────────────────────────────────────────────
+type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 interface CircuitBreaker {
   state: CircuitState;
   failureCount: number;
@@ -15,9 +28,8 @@ interface CircuitBreaker {
 }
 
 const CIRCUIT_BREAKER_THRESHOLD = 5;
-const CIRCUIT_BREAKER_TIMEOUT_MS = 60_000; // 1 minute
+const CIRCUIT_BREAKER_TIMEOUT_MS = 60_000;
 const HALF_OPEN_SUCCESS_THRESHOLD = 2;
-const AI_REQUEST_TIMEOUT_MS = 10_000; // 10 seconds
 
 const circuitBreaker: CircuitBreaker = {
   state: 'CLOSED',
@@ -28,8 +40,7 @@ const circuitBreaker: CircuitBreaker = {
 
 function isCircuitOpen(): boolean {
   if (circuitBreaker.state === 'OPEN') {
-    const elapsed = Date.now() - circuitBreaker.lastFailureTime;
-    if (elapsed >= CIRCUIT_BREAKER_TIMEOUT_MS) {
+    if (Date.now() - circuitBreaker.lastFailureTime >= CIRCUIT_BREAKER_TIMEOUT_MS) {
       circuitBreaker.state = 'HALF_OPEN';
       circuitBreaker.successCount = 0;
       logger.info('AI circuit breaker transitioning to HALF_OPEN');
@@ -62,54 +73,192 @@ function recordFailure(): void {
   }
 }
 
-/** Calls the OpenAI chat completions endpoint with a timeout */
-async function callAIAPI(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+// ─── Property search (Firebase) ───────────────────────────────────────────────
+interface PropertySummary {
+  id: string;
+  title: string;
+  type: string;
+  price: number;
+  currency: string;
+  city: string;
+  state: string;
+  country: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
+  status: string;
+  description?: string;
+}
 
+/**
+ * Searches Firestore properties based on extracted criteria from user query.
+ * Returns a compact summary string to inject into the Gemini prompt.
+ */
+async function searchProperties(query: string): Promise<string> {
   try {
-    const response = await fetch(`${config.ai.apiUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.ai.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a helpful real estate assistant for Estate Bridge. Help users with property listings, buying/selling advice, and general real estate questions.',
-          },
-          ...messages,
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-      signal: controller.signal,
-    });
+    const db = getFirebaseFirestore();
+    const queryLower = query.toLowerCase();
 
-    if (!response.ok) {
-      throw new Error(`AI API responded with status ${response.status}`);
+    // Start with all available properties (limit to prevent huge context)
+    let firestoreQuery: FirebaseFirestore.Query = db
+      .collection(COLLECTIONS.PROPERTIES)
+      .where('status', '==', 'available')
+      .limit(15);
+
+    // Filter by type keywords
+    if (queryLower.includes('apartment')) {
+      firestoreQuery = firestoreQuery.where('type', '==', 'apartment');
+    } else if (queryLower.includes('house') || queryLower.includes('villa')) {
+      firestoreQuery = firestoreQuery.where('type', '==', 'house');
+    } else if (queryLower.includes('condo')) {
+      firestoreQuery = firestoreQuery.where('type', '==', 'condo');
+    } else if (queryLower.includes('commercial') || queryLower.includes('office') || queryLower.includes('shop')) {
+      firestoreQuery = firestoreQuery.where('type', '==', 'commercial');
+    } else if (queryLower.includes('land') || queryLower.includes('plot')) {
+      firestoreQuery = firestoreQuery.where('type', '==', 'land');
     }
 
-    const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
-    };
-    return data.choices[0]?.message?.content ?? 'I could not generate a response.';
-  } finally {
-    clearTimeout(timeoutId);
+    const snap = await firestoreQuery.get();
+
+    if (snap.empty) {
+      // Fallback: return any available properties without type filter
+      const fallback = await db
+        .collection(COLLECTIONS.PROPERTIES)
+        .where('status', '==', 'available')
+        .limit(10)
+        .get();
+
+      if (fallback.empty) {
+        return 'No properties are currently listed on Estate Bridge.';
+      }
+      snap.docs.push(...fallback.docs);
+    }
+
+    const properties: PropertySummary[] = snap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        title: d.title || 'Untitled',
+        type: d.type || 'property',
+        price: d.price || 0,
+        currency: d.currency || 'USD',
+        city: d.city || d.location?.city || '',
+        state: d.state || d.location?.state || '',
+        country: d.country || d.location?.country || '',
+        bedrooms: d.bedrooms,
+        bathrooms: d.bathrooms,
+        area: d.area,
+        status: d.status || 'available',
+        description: d.description?.substring(0, 120),
+      };
+    });
+
+    // Format compact summary for Gemini context
+    const summary = properties
+      .map((p, i) => {
+        const location = [p.city, p.state, p.country].filter(Boolean).join(', ');
+        const details = [
+          p.bedrooms ? `${p.bedrooms} bed` : null,
+          p.bathrooms ? `${p.bathrooms} bath` : null,
+          p.area ? `${p.area} sqft` : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
+        return `${i + 1}. [${p.id}] ${p.title} | ${p.type} | ${p.currency} ${p.price.toLocaleString()} | ${location}${details ? ` | ${details}` : ''}${p.description ? ` | "${p.description}..."` : ''}`;
+      })
+      .join('\n');
+
+    return `Current available properties on Estate Bridge (${properties.length} results):\n${summary}`;
+  } catch (error: any) {
+    logger.error('Property search for AI failed', { error: error.message });
+    return 'Unable to fetch property listings at this time.';
   }
 }
 
-const FALLBACK_MESSAGE =
-  "I'm sorry, I'm having trouble connecting right now. Please try again in a moment, or contact our support team for assistance.";
+// ─── Detect if query needs property data ─────────────────────────────────────
+function needsPropertySearch(message: string): boolean {
+  const keywords = [
+    'property', 'properties', 'listing', 'listings', 'house', 'apartment',
+    'condo', 'land', 'commercial', 'buy', 'rent', 'available', 'price',
+    'bedroom', 'bathroom', 'show me', 'find', 'search', 'look for',
+    'any house', 'any flat', 'any property', 'how much', 'affordable',
+    'expensive', 'cheap', 'budget', 'sqft', 'area', 'location', 'city',
+  ];
+  const lower = message.toLowerCase();
+  return keywords.some((kw) => lower.includes(kw));
+}
 
+// ─── Gemini call ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are EstateBot, a smart and friendly real estate assistant for Estate Bridge — a premium property marketplace.
+
+Your capabilities:
+- Answer questions about properties listed on Estate Bridge from the data provided to you
+- Give real estate advice (buying, selling, investing, mortgages, negotiations)
+- Help users understand property types, pricing, and locations
+- Assist sellers with listing tips
+- Explain the Estate Bridge platform features
+
+Rules:
+- Always be concise, helpful, and professional
+- When recommending properties, reference specific details from the property data
+- If the user asks about a property not in the data, tell them to browse the full listings
+- Format prices clearly with currency symbols
+- Use bullet points for lists of properties
+- Never make up property data — only use what is provided`;
+
+async function callGemini(
+  history: ChatMessage[],
+  userMessage: string,
+  propertyContext: string
+): Promise<string> {
+  const client = getGeminiClient();
+  const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  // Build full prompt with property context injected
+  const contextInjection = propertyContext
+    ? `\n\n[LIVE PROPERTY DATA FROM FIREBASE]\n${propertyContext}\n[END OF PROPERTY DATA]\n`
+    : '';
+
+  // Convert history to Gemini chat format
+  const geminiHistory = history.slice(-10).map((m) => ({
+    role: m.role === 'user' ? 'user' : 'model',
+    parts: [{ text: m.content }],
+  }));
+
+  const chat = model.startChat({
+    history: [
+      {
+        role: 'user',
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      {
+        role: 'model',
+        parts: [{ text: 'Understood! I\'m EstateBot, ready to help with Estate Bridge properties and real estate questions.' }],
+      },
+      ...geminiHistory,
+    ],
+    generationConfig: {
+      maxOutputTokens: 600,
+      temperature: 0.7,
+    },
+  });
+
+  const fullMessage = contextInjection
+    ? `${userMessage}\n${contextInjection}`
+    : userMessage;
+
+  const result = await chat.sendMessage(fullMessage);
+  return result.response.text();
+}
+
+const FALLBACK_MESSAGE =
+  "I'm sorry, I'm having trouble connecting right now. Please try again in a moment, or browse our property listings directly.";
+
+// ─── Public service ───────────────────────────────────────────────────────────
 export const aiSupportService = {
   /**
-   * Send a message and get an AI response.
-   * Stores the exchange in Firestore under the given conversationId.
+   * Send a message and get a Gemini-powered AI response.
+   * Automatically injects live Firebase property data when relevant.
    */
   async sendMessage(
     conversationId: string,
@@ -122,10 +271,9 @@ export const aiSupportService = {
     // Load existing history
     const convSnap = await convRef.get();
     const history: ChatMessage[] = convSnap.exists
-      ? (convSnap.data()?.messages as ChatMessage[]) ?? []
+      ? ((convSnap.data()?.messages as ChatMessage[]) ?? [])
       : [];
 
-    // Build the new user message
     const userMsg: ChatMessage = {
       id: `${Date.now()}-user`,
       role: 'user',
@@ -136,19 +284,22 @@ export const aiSupportService = {
     let assistantContent: string;
 
     if (isCircuitOpen()) {
-      logger.warn('AI circuit breaker is OPEN, returning fallback message');
+      logger.warn('AI circuit breaker is OPEN, returning fallback');
       assistantContent = FALLBACK_MESSAGE;
     } else {
       try {
-        const apiMessages = [...history, userMsg].map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-        assistantContent = await callAIAPI(apiMessages);
+        // Inject property data if the query is property-related
+        let propertyContext = '';
+        if (needsPropertySearch(userMessage)) {
+          logger.info('Fetching property context for AI query', { userId, conversationId });
+          propertyContext = await searchProperties(userMessage);
+        }
+
+        assistantContent = await callGemini(history, userMessage, propertyContext);
         recordSuccess();
+        logger.info('Gemini response generated', { conversationId, userId });
       } catch (error: any) {
-        const isTimeout = error?.name === 'AbortError';
-        logger.error('AI API call failed', { error: error?.message, isTimeout });
+        logger.error('Gemini AI call failed', { error: error?.message });
         recordFailure();
         assistantContent = FALLBACK_MESSAGE;
       }
@@ -182,7 +333,7 @@ export const aiSupportService = {
     };
   },
 
-  /** Create a new conversation document and return its ID */
+  /** Create a new conversation document */
   async createConversation(userId: string): Promise<string> {
     const db = getFirebaseFirestore();
     const ref = await db.collection(COLLECTIONS.CONVERSATIONS).add({
@@ -199,22 +350,15 @@ export const aiSupportService = {
     const db = getFirebaseFirestore();
     const snap = await db.collection(COLLECTIONS.CONVERSATIONS).doc(conversationId).get();
 
-    if (!snap.exists) {
-      return [];
-    }
+    if (!snap.exists) return [];
 
     const data = snap.data()!;
-    // Ensure the conversation belongs to the requesting user
-    if (data.userId !== userId) {
-      return [];
-    }
+    if (data.userId !== userId) return [];
 
-    const messages: ChatMessage[] = (data.messages ?? []).map((m: any) => ({
+    return ((data.messages ?? []) as any[]).map((m) => ({
       ...m,
       timestamp: new Date(m.timestamp),
     }));
-
-    return messages;
   },
 
   // Expose for testing
