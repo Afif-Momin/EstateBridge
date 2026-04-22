@@ -17,12 +17,12 @@ export const registerSchema = Joi.object({
     .min(VALIDATION.PASSWORD_MIN_LENGTH)
     .max(VALIDATION.PASSWORD_MAX_LENGTH)
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .required()
+    .optional()
+    .allow('')
     .messages({
       'string.min': `Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters long`,
       'string.max': `Password must not exceed ${VALIDATION.PASSWORD_MAX_LENGTH} characters`,
       'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
-      'any.required': 'Password is required',
     }),
   
   fullName: Joi.string()
