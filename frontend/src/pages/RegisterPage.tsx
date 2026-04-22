@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppDispatch } from '../store';
@@ -250,9 +250,14 @@ const RegisterPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    setValue,
+    control,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // useController for cascading dropdowns so RHF tracks their values
+  const { field: countryField } = useController({ name: 'buy_country', control, defaultValue: '' });
+  const { field: stateField } = useController({ name: 'buy_state', control, defaultValue: '' });
+  const { field: cityField } = useController({ name: 'buy_city', control, defaultValue: '' });
 
   const stateOptions = selectedCountry ? (COUNTRY_STATES[selectedCountry] ?? []) : [];
   const cityOptions = selectedState ? (STATE_CITIES[selectedState] ?? []) : [];
@@ -261,20 +266,20 @@ const RegisterPage: React.FC = () => {
     const country = e.target.value;
     setSelectedCountry(country);
     setSelectedState('');
-    setValue('buy_country', country, { shouldValidate: true });
-    setValue('buy_state', '', { shouldValidate: false });
-    setValue('buy_city', '', { shouldValidate: false });
+    countryField.onChange(country);
+    stateField.onChange('');
+    cityField.onChange('');
   };
 
   const onStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const state = e.target.value;
     setSelectedState(state);
-    setValue('buy_state', state, { shouldValidate: true });
-    setValue('buy_city', '', { shouldValidate: false });
+    stateField.onChange(state);
+    cityField.onChange('');
   };
 
   const onCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setValue('buy_city', e.target.value, { shouldValidate: true });
+    cityField.onChange(e.target.value);
   };
 
   const onSubmit = async (data: FormData) => {
@@ -381,9 +386,11 @@ const RegisterPage: React.FC = () => {
                   ]}
                   placeholder="Select your country"
                   error={errors.buy_country?.message}
-                  value={selectedCountry}
+                  value={countryField.value}
                   onChange={onCountryChange}
-                  name="buy_country"
+                  onBlur={countryField.onBlur}
+                  name={countryField.name}
+                  ref={countryField.ref}
                 />
 
                 {/* State — dropdown if available, free text fallback */}
@@ -394,9 +401,11 @@ const RegisterPage: React.FC = () => {
                     options={stateOptions}
                     placeholder="Select your state"
                     error={errors.buy_state?.message}
-                    value={selectedState}
+                    value={stateField.value}
                     onChange={onStateChange}
-                    name="buy_state"
+                    onBlur={stateField.onBlur}
+                    name={stateField.name}
+                    ref={stateField.ref}
                     disabled={!selectedCountry}
                   />
                 ) : (
@@ -418,8 +427,11 @@ const RegisterPage: React.FC = () => {
                     options={cityOptions}
                     placeholder="Select your city"
                     error={errors.buy_city?.message}
+                    value={cityField.value}
                     onChange={onCityChange}
-                    name="buy_city"
+                    onBlur={cityField.onBlur}
+                    name={cityField.name}
+                    ref={cityField.ref}
                     disabled={!selectedState}
                   />
                 ) : (
