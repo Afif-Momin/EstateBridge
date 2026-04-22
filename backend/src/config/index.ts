@@ -25,7 +25,10 @@ export const config = {
   // Security
   security: {
     jwtSecret: process.env.JWT_SECRET || 'change-this-in-production',
-    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
+    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || [
+      'http://localhost:5173',
+      'https://estate-bridge-eight.vercel.app',
+    ],
   },
 
   // Rate Limiting

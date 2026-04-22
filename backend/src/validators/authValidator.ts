@@ -97,12 +97,7 @@ export const registerSchema = Joi.object({
   
   // Optional fields
   idToken: Joi.string().optional(),
-  captchaToken: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'CAPTCHA token is required',
-      'string.base': 'CAPTCHA token must be a string',
-    }),
+  captchaToken: Joi.string().optional(),
 });
 
 /**

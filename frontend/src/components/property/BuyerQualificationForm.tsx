@@ -18,13 +18,13 @@ interface Props {
 }
 
 const schema = z.object({
-  reason_to_buy: z.enum(['Investment', 'Self Use'], {
-    error: 'Please select a reason to buy',
+  reason_to_buy: z.enum(['Investment', 'Self Use'] as const, {
+    message: 'Please select a reason to buy',
   }),
   is_property_dealer: z.boolean(),
   buyer_name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
   buyer_phone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number is too long'),
-  purchase_timeline: z.enum(['3 months', '6 months', 'More than 6 months']).optional(),
+  purchase_timeline: z.enum(['3 months', '6 months', 'More than 6 months'] as const).optional(),
   home_loan_interest: z.boolean().optional(),
   site_visit_interest: z.boolean().optional(),
   terms_accepted: z.boolean().refine((val) => val === true, {

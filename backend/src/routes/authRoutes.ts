@@ -10,7 +10,6 @@ import {
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { validate, registerSchema, loginSchema } from '../validators/authValidator';
-import { validateCaptcha } from '../middleware/captchaValidator';
 import { registrationRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
@@ -20,7 +19,7 @@ const router = Router();
  * @desc    Register a new user
  * @access  Public
  */
-router.post('/register', validateCaptcha('register'), registrationRateLimiter, validate(registerSchema), register);
+router.post('/register', registrationRateLimiter, validate(registerSchema), register);
 
 /**
  * @route   POST /api/v1/auth/login
