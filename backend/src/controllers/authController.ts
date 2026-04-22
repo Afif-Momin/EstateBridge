@@ -92,6 +92,12 @@ export const register = async (
       currency,
     });
 
+    // Send verification email — fire-and-forget so it doesn't block the response
+    verificationService.generateVerificationToken(result.user.id)
+      .then((token) => verificationService.sendVerificationEmail(email, token))
+      .then(() => logger.info('Verification email sent', { email }))
+      .catch((err) => logger.warn('Failed to send verification email (non-fatal)', { email, error: err?.message }));
+
     res.status(201).json({
       success: true,
       data: { user: result.user },

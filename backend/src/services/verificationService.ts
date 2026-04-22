@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { getFirebaseFirestore } from '../config/firebase';
 import verificationTokenRepository from '../repositories/verificationTokenRepository';
 import { logWithContext } from '../utils/logger';
@@ -363,35 +364,52 @@ class VerificationService {
    * @param token - The verification token
    */
   private async sendEmail(email: string, token: string): Promise<void> {
-    // TODO: Implement actual email sending using a service like:
-    // - SendGrid
-    // - AWS SES
-    // - Nodemailer with SMTP
-    // - Firebase Extensions (Trigger Email)
-    
-    const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+    const verificationLink = `${process.env.FRONTEND_URL || 'https://estate-bridge-eight.vercel.app'}/verify-email?token=${token}`;
     const subject = 'Verify Your Estate Bridge Account';
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2 style="color:#2563eb">Welcome to Estate Bridge!</h2>
+        <p>Thank you for registering. Please verify your email address to activate your account.</p>
+        <div style="text-align:center;margin:30px 0">
+          <a href="${verificationLink}"
+             style="background:#2563eb;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:600">
+            Verify Email Address
+          </a>
+        </div>
+        <p style="color:#666;font-size:13px">This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+        <p style="color:#999;font-size:12px">Estate Bridge – Premium Property Marketplace</p>
+      </div>
+    `;
 
-    // For development/testing: Log the email instead of sending
-    if (process.env.NODE_ENV === 'development') {
-      logWithContext('info', 'Email would be sent (development mode)', {
-        to: email,
-        subject,
-        verificationLink,
+    // In development, just log the link
+    if (process.env.NODE_ENV === 'development' && !process.env.SMTP_USER) {
+      logWithContext('info', '[DEV] Verification link (no SMTP configured)', {
+        to: email, verificationLink,
       });
-      
-      // Simulate email sending delay
       await this.sleep(100);
       return;
     }
 
-    // In production, this should actually send the email
-    // Example with Nodemailer:
-    // const transporter = nodemailer.createTransport({ ... });
-    // const htmlBody = `...email template...`;
-    // await transporter.sendMail({ from, to: email, subject, html: htmlBody });
-    
-    throw new Error('Email service not configured. Please set up an email provider.');
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpUser || !smtpPass) {
+      logWithContext('error', 'SMTP credentials not configured (SMTP_USER / SMTP_PASS)');
+      throw new Error('Email service not configured. Set SMTP_USER and SMTP_PASS environment variables.');
+    }
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
+      from: `"Estate Bridge" <${smtpUser}>`,
+      to: email,
+      subject,
+      html,
+    });
   }
 
   /**
