@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import { useAppDispatch } from '../store';
 import { setCredentials } from '../store/slices/authSlice';
 import { addToast } from '../store/slices/uiSlice';
@@ -13,6 +15,24 @@ import Select from '../components/common/Select';
 import { Button } from '../components/common/Button';
 import { ROUTES, USER_ROLES, VALIDATION, APP_NAME } from '../constants';
 import type { ApiResponse, AuthResponse } from '../types';
+
+/** Map Firebase Auth error codes to friendly messages */
+const getFirebaseErrorMessage = (code: string): string => {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'This email is already registered. Please sign in instead.';
+    case 'auth/invalid-email':
+      return 'Invalid email address.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Use at least 8 characters with uppercase, lowercase, and a number.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a moment and try again.';
+    default:
+      return 'Authentication failed. Please try again.';
+  }
+};
 
 // Country → States/Provinces
 const COUNTRY_STATES: Record<string, { value: string; label: string }[]> = {
@@ -285,11 +305,38 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      // Create Firebase Auth account
-      const credential = await firebaseSignUp(data.email, data.password);
-      const token = await credential.user.getIdToken();
+      let token: string;
 
-      // Register with backend
+      try {
+        // Try to create a new Firebase Auth account
+        const credential = await firebaseSignUp(data.email, data.password);
+        token = await credential.user.getIdToken();
+      } catch (firebaseErr: any) {
+        // If the email already exists in Firebase (stranded from a previous failed attempt),
+        // sign in with the same credentials to get a fresh token, then retry backend registration
+        if (firebaseErr?.code === 'auth/email-already-in-use') {
+          try {
+            const existingCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+            token = await existingCredential.user.getIdToken();
+          } catch {
+            // Wrong password or other issue — just show the original "already registered" error
+            dispatch(addToast({ 
+              type: 'error', 
+              message: 'This email is already registered. Please sign in instead.' 
+            }));
+            return;
+          }
+        } else {
+          // Other Firebase errors (weak password, invalid email, etc.)
+          const message = firebaseErr?.code 
+            ? getFirebaseErrorMessage(firebaseErr.code)
+            : (firebaseErr?.message ?? 'Registration failed');
+          dispatch(addToast({ type: 'error', message }));
+          return;
+        }
+      }
+
+      // Register user profile in backend (uses idToken to link with Firebase Auth user)
       const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', {
         email: data.email,
         fullName: data.fullName,
@@ -305,13 +352,27 @@ const RegisterPage: React.FC = () => {
       dispatch(setCredentials({ user: res.data.data.user, token }));
       dispatch(addToast({ 
         type: 'success', 
-        message: 'Account created successfully! Please check your email to verify your account.' 
+        message: 'Account created successfully!' 
       }));
 
       const redirect = data.role === 'seller' ? ROUTES.DASHBOARD.SELLER : ROUTES.DASHBOARD.BUYER;
       navigate(redirect, { replace: true });
     } catch (err: any) {
-      const message = err?.response?.data?.error?.message ?? err?.message ?? 'Registration failed';
+      // Extract the most specific error message from the backend response
+      const backendFields = err?.response?.data?.error?.fields;
+      const backendMessage = err?.response?.data?.error?.message;
+      
+      let message = 'Registration failed. Please try again.';
+      if (backendFields) {
+        // Show first field-level validation error
+        const firstField = Object.values(backendFields)[0] as string[];
+        message = firstField?.[0] ?? backendMessage ?? message;
+      } else if (backendMessage) {
+        message = backendMessage;
+      } else if (err?.message) {
+        message = err.message;
+      }
+
       dispatch(addToast({ type: 'error', message }));
     } finally {
       setLoading(false);

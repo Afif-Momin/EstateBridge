@@ -99,19 +99,19 @@ const VALID_COUNTRY_CODES = new Set([
  * Pincode format patterns by country
  */
 const PINCODE_PATTERNS: Record<string, RegExp> = {
-  US: /^\d{5}$/,           // 5 digits for US
-  IN: /^\d{6}$/,           // 6 digits for India
-  GB: /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i, // UK postcodes
-  CA: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i, // Canadian postal codes
-  AU: /^\d{4}$/,           // 4 digits for Australia
-  DE: /^\d{5}$/,           // 5 digits for Germany
-  FR: /^\d{5}$/,           // 5 digits for France
-  JP: /^\d{3}-?\d{4}$/,    // Japan postal codes
-  CN: /^\d{6}$/,           // 6 digits for China
-  BR: /^\d{5}-?\d{3}$/,    // Brazil CEP
-  MX: /^\d{5}$/,           // 5 digits for Mexico
-  IT: /^\d{5}$/,           // 5 digits for Italy
-  ES: /^\d{5}$/,           // 5 digits for Spain
+  US: /^\d{5}(-\d{4})?$/,   // 5 or 9 digits for US (ZIP or ZIP+4)
+  IN: /^\d{6}$/,             // 6 digits for India
+  GB: /^[A-Z0-9]{2,4}\s?\d[A-Z]{2}$/i, // UK postcodes (relaxed)
+  CA: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i,   // Canadian postal codes
+  AU: /^\d{4}$/,             // 4 digits for Australia
+  DE: /^\d{5}$/,             // 5 digits for Germany
+  FR: /^\d{5}$/,             // 5 digits for France
+  JP: /^\d{3}-?\d{4}$/,      // Japan postal codes
+  CN: /^\d{6}$/,             // 6 digits for China
+  BR: /^\d{5}-?\d{3}$/,      // Brazil CEP
+  MX: /^\d{5}$/,             // 5 digits for Mexico
+  IT: /^\d{5}$/,             // 5 digits for Italy
+  ES: /^\d{5}$/,             // 5 digits for Spain
   NL: /^\d{4}\s?[A-Z]{2}$/i, // Netherlands postcodes
 };
 
@@ -144,9 +144,9 @@ export const isValidPincode = (pincode: string, countryCode: string): boolean =>
     return pattern.test(pincode.trim());
   }
 
-  // For countries without specific patterns, accept 3-10 alphanumeric characters
-  // This is a reasonable default for most postal code systems
-  const defaultPattern = /^[A-Z0-9\s-]{3,10}$/i;
+  // For countries without specific patterns, accept anything that looks like a postal code
+  // (3-12 chars, alphanumeric with optional spaces/hyphens)
+  const defaultPattern = /^[A-Z0-9][A-Z0-9\s-]{1,11}$/i;
   return defaultPattern.test(pincode.trim());
 };
 
