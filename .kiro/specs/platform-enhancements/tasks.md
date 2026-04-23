@@ -632,15 +632,15 @@ This implementation plan breaks down the platform enhancements feature into disc
     - Test graceful failure handling
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 17.1, 17.2, 17.3, 17.4, 17.5_
 
-- [~] 15. Phase 4 - Brochure & Notifications: Admin Notification System
-  - [~] 15.1 Set up Firebase Cloud Functions project
+- [ ] 15. Phase 4 - Brochure & Notifications: Admin Notification System
+  - [ ] 15.1 Set up Firebase Cloud Functions project
     - Initialize functions directory if not exists
     - Configure TypeScript for Cloud Functions
     - Add Firebase Admin SDK
     - Configure email service (Nodemailer with SMTP)
     - _Requirements: 16.1_
 
-  - [~] 15.2 Implement Admin Notification Service
+  - [ ] 15.2 Implement Admin Notification Service
     - Create backend/src/services/adminNotificationService.ts
     - Implement notifyPropertyPendingApproval(property)
     - Implement notifyPropertyFlagged(property, reason)
@@ -660,20 +660,20 @@ This implementation plan breaks down the platform enhancements feature into disc
     - **Property 53: Notification Retry Logic**
     - **Validates: Requirements 16.5**
 
-  - [~] 15.4 Create property creation trigger function
+  - [ ] 15.4 Create property creation trigger function
     - Create functions/src/triggers/onPropertyCreate.ts
     - Listen to properties collection onCreate event
     - Check if pro_status is "Waiting for Admin Approval"
     - Call adminNotificationService.notifyPropertyPendingApproval()
     - _Requirements: 16.1_
 
-  - [~] 15.5 Integrate notification service into property creation
+  - [ ] 15.5 Integrate notification service into property creation
     - Update backend/src/controllers/propertyController.ts create method
     - Call adminNotificationService.notifyPropertyPendingApproval() after property creation
     - Handle notification failures gracefully (log but don't block creation)
     - _Requirements: 16.1, 16.2_
 
-  - [~] 15.6 Create email templates for notifications
+  - [ ] 15.6 Create email templates for notifications
     - Create email template for property approval request
     - Include property_id, seller_name, property_type, submission_timestamp
     - Include direct link to admin approval queue
@@ -732,7 +732,7 @@ This implementation plan breaks down the platform enhancements feature into disc
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [~] 18. Phase 5 - Infrastructure & Optimization: Firebase Optimization
+- [ ] 18. Phase 5 - Infrastructure & Optimization: Firebase Optimization
   - [x] 18.1 Update Firestore security rules
     - Update firestore.rules file
     - Add rules for verification_tokens collection (backend only)
@@ -763,7 +763,7 @@ This implementation plan breaks down the platform enhancements feature into disc
     - Deploy indexes to Firebase
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-  - [~] 18.4 Create token cleanup Cloud Function
+  - [ ] 18.4 Create token cleanup Cloud Function
     - Create functions/src/scheduled/cleanupExpiredTokens.ts
     - Schedule to run daily (every 24 hours)
     - Query verification_tokens where expiresAt < now and used = false
@@ -771,7 +771,7 @@ This implementation plan breaks down the platform enhancements feature into disc
     - Log cleanup statistics
     - _Requirements: 4.5_
 
-  - [~] 18.5 Create brochure cleanup Cloud Function
+  - [ ] 18.5 Create brochure cleanup Cloud Function
     - Create functions/src/scheduled/cleanupExpiredBrochures.ts
     - Schedule to run daily
     - Query brochures where expiresAt < now
@@ -780,7 +780,7 @@ This implementation plan breaks down the platform enhancements feature into disc
     - Log cleanup statistics
     - _Requirements: 8.4_
 
-  - [~] 18.6 Deploy Cloud Functions
+  - [ ] 18.6 Deploy Cloud Functions
     - Deploy onPropertyCreate trigger function
     - Deploy cleanupExpiredTokens scheduled function
     - Deploy cleanupExpiredBrochures scheduled function
