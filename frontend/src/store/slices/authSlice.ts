@@ -46,11 +46,16 @@ const authSlice = createSlice({
       state.error = null;
       state.loading = false;
     },
+    setEmailVerified(state, action: PayloadAction<boolean>) {
+      if (state.user) {
+        state.user = { ...state.user, emailVerified: action.payload };
+      }
+    },
     clearError(state) {
       state.error = null;
     },
   },
 });
 
-export const { setCredentials, setLoading, setError, logout, clearError } = authSlice.actions;
+export const { setCredentials, setLoading, setError, logout, clearError, setEmailVerified } = authSlice.actions;
 export default authSlice.reducer;

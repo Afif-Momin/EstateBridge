@@ -261,21 +261,13 @@ class PropertyRepository {
 
       let query: FirebaseFirestore.Query = db.collection(this.collectionName);
 
-      // Apply filters
+      // Apply filters to Firestore query
+      // Only filter by status at the database level to avoid composite index requirements
       if (status) {
         query = query.where('status', '==', status);
       }
 
-      if (region) {
-        query = query.where('region', '==', region);
-      }
-
-      if (propertyType) {
-        query = query.where('propertyType', '==', propertyType);
-      }
-
-      // Price range filtering (done in-memory due to Firestore limitations)
-      // Firestore doesn't support multiple range queries on different fields
+      // Fetch from Firestore
       const snapshot = await query.get();
 
       let properties: Property[] = snapshot.docs.map((doc) => {
@@ -287,6 +279,17 @@ class PropertyRepository {
           updatedAt: data.updatedAt?.toDate(),
         } as Property;
       });
+
+      // Apply remaining filters in-memory
+
+      if (region) {
+        properties = properties.filter((p) => p.region === region);
+      }
+
+      if (propertyType) {
+        properties = properties.filter((p) => p.propertyType === propertyType);
+      }
+
 
       // Filter out pending properties from public search
       // Allow property owner to see their own pending properties

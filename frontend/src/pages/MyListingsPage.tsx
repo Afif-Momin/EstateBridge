@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/apiClient';
 import { addToast } from '../store/slices/uiSlice';
@@ -15,6 +15,7 @@ import type { Property, ApiResponse, PaginatedResponse } from '../types';
 const MyListingsPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -73,7 +74,7 @@ const MyListingsPage: React.FC = () => {
           description="Create your first property listing to start connecting with potential buyers."
           action={{
             label: 'Create Listing',
-            onClick: () => window.location.href = ROUTES.PROPERTIES.CREATE,
+            onClick: () => navigate(ROUTES.PROPERTIES.CREATE),
           }}
         />
       ) : (

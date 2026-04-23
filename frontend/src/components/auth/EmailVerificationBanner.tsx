@@ -1,15 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { addToast } from '../../store/slices/uiSlice';
+import { setEmailVerified } from '../../store/slices/authSlice';
 import apiClient from '../../services/apiClient';
 import { Button } from '../common/Button';
 import type { ApiResponse } from '../../types';
 
 export const EmailVerificationBanner: React.FC = () => {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, token } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll the backend every 10 seconds to check if the user has verified their email
+  // This allows the banner to auto-dismiss when the user verifies in another tab/window
+  useEffect(() => {
+    // Only poll if user is logged in, not yet verified, and banner not dismissed
+    if (!user || user.emailVerified || dismissed || !token) return;
+
+    const checkVerificationStatus = async () => {
+      try {
+        const res = await apiClient.get<ApiResponse<{ emailVerified: boolean }>>(
+          '/auth/verification-status'
+        );
+        if (res.data?.data?.emailVerified) {
+          dispatch(setEmailVerified(true));
+          dispatch(addToast({ type: 'success', message: 'Email verified successfully!' }));
+        }
+      } catch {
+        // silently ignore — the banner stays visible if the check fails
+      }
+    };
+
+    // Check immediately on mount
+    checkVerificationStatus();
+
+    // Then check every 10 seconds
+    pollingRef.current = setInterval(checkVerificationStatus, 10_000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [user, token, dismissed, dispatch]);
 
   // Don't show banner if user is verified or banner is dismissed
   if (!user || user.emailVerified || dismissed) {
