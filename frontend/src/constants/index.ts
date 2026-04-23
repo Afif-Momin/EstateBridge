@@ -57,6 +57,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   REGISTER: '/register',
+  VERIFY_EMAIL: '/verify-email',
   DASHBOARD: {
     BUYER: '/dashboard/buyer',
     SELLER: '/dashboard/seller',

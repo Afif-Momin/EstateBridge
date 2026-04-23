@@ -26,6 +26,7 @@ const BuyerAppointmentsPage = lazy(() => import('./pages/BuyerAppointmentsPage')
 const SellerAppointmentsPage = lazy(() => import('./pages/SellerAppointmentsPage'));
 const AISupportPage = lazy(() => import('./pages/AISupportPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -39,6 +40,7 @@ const AppRoutes: React.FC = () => (
       {/* Public routes */}
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+      <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
 
       {/* Home redirect */}
       <Route path={ROUTES.HOME} element={<Navigate to={ROUTES.PROPERTIES.BROWSE} replace />} />

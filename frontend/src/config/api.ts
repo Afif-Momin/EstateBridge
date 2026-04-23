@@ -12,6 +12,8 @@ export const API_ENDPOINTS = {
     LOGOUT: '/auth/logout',
     ME: '/auth/me',
     REFRESH: '/auth/refresh',
+    VERIFY_EMAIL: '/auth/verify-email',
+    RESEND_VERIFICATION: '/auth/resend-verification',
   },
   // Property endpoints
   PROPERTIES: {
